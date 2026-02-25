@@ -215,6 +215,43 @@
         input:checked~.toggle-texts .text-day {
             color: #000000;
         }
+
+        /* Tooltip */
+        #cell-tooltip {
+            position: absolute;
+            background: #333;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+            max-width: 350px;
+        }
+
+        #cell-tooltip::after {
+            content: " ";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        /* Clickable Cell Highlight */
+        .clickable-cell {
+            cursor: pointer;
+            transition: box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+
+        .clickable-cell:hover {
+            box-shadow: inset 0 0 0 2px #007bff, inset 0 0 20px rgba(0, 123, 255, 0.15) !important;
+        }
     </style>
 </head>
 
@@ -542,12 +579,26 @@
                                 cell.style.color = cellData.font_color;
                             }
 
+                            // Extract chapter code by ignoring prefixes
+                            let pureText = strValue.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
+                            pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
+                            let chapterCode = "";
+                            if (pureText) {
+                                chapterCode = pureText.split(/[\n:]/)[0].trim().split(' ')[0];
+                            }
+
+                            if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
+                                cell.classList.add('clickable-cell');
+                                cell.setAttribute('data-chapter-code', chapterCode); // Store for tooltip
+                            }
+
                             // Keep column 0 sticky
                             let currentGridCol = 0;
                             while (currentGridObj.grid[index] && currentGridObj.grid[index][currentGridCol] && currentGridObj.grid[index][currentGridCol].cell !== cellData) {
                                 currentGridCol++;
                             }
                             if (currentGridCol === 0) {
+                                cell.classList.remove('clickable-cell');
                                 cell.classList.add("sticky-left");
                                 cell.classList.add("sticky-col-0");
                                 cell.style.position = "sticky";
@@ -560,6 +611,7 @@
                                 }
                             }
                             if (currentGridCol === 1) {
+                                cell.classList.remove('clickable-cell');
                                 cell.classList.add("sticky-left");
                                 cell.classList.add("sticky-col-1");
                                 cell.style.position = "sticky";
@@ -1006,6 +1058,22 @@
                             if (cellInfo.rowspan > 1) {
                                 td.setAttribute('rowspan', cellInfo.rowspan);
                             }
+
+                            // Convert <br> to \n before stripping other HTML tags so line breaks are preserved
+                            let textWithNewlines = cellInfo.html.replace(/<br\s*[\/]?>/gi, '\n');
+                            let rawText = textWithNewlines.replace(/<[^>]*>?/gm, ' ').trim();
+
+                            let pureText = rawText.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
+                            pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
+                            let chapterCode = "";
+                            if (pureText) {
+                                chapterCode = pureText.split(/[\n:]/)[0].trim().split(' ')[0];
+                            }
+
+                            if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
+                                td.classList.add('clickable-cell');
+                                td.setAttribute('data-chapter-code', chapterCode); // Store for tooltip
+                            }
                         } else {
                             td.innerHTML = '';
                         }
@@ -1017,6 +1085,71 @@
             // Automatically update timeline location
             setInterval(updateTimeline, 60000);
             window.addEventListener('resize', updateTimeline);
+
+            // Tooltip logic
+            const tooltip = document.createElement('div');
+            tooltip.id = 'cell-tooltip';
+            document.body.appendChild(tooltip);
+
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('td')) {
+                    tooltip.style.display = 'none';
+                }
+            });
+
+            tableBody.addEventListener('click', function (e) {
+                const td = e.target.closest('td');
+                if (!td) return;
+
+                // Fetch the code that was saved during render
+                let chapterCode = td.getAttribute('data-chapter-code');
+
+                if (!chapterCode) {
+                    // Fallback using text extraction if data attribute isn't set
+                    const text = td.innerText.trim();
+                    if (!text) return;
+
+                    let pureText = text.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
+                    pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
+                    if (pureText) {
+                        chapterCode = pureText.split(/[\n:]/)[0].trim().split(' ')[0];
+                    }
+                }
+
+                if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
+                    fetch(`http://127.0.0.1:5001/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`)
+                        .then(res => {
+                            if (!res.ok) throw new Error("Not found");
+                            return res.json();
+                        })
+                        .then(data => {
+                            tooltip.innerHTML = `<div style="margin-bottom: 4px; border-bottom: 1px solid #666; padding-bottom: 4px;"><strong>Môn:</strong> ${data.SubjectName}</div><div><strong>Bài:</strong> ${data.ChapterName}</div>`;
+                            tooltip.style.display = 'block';
+
+                            const rect = td.getBoundingClientRect();
+                            let left = rect.left + window.scrollX + rect.width / 2 - tooltip.offsetWidth / 2;
+                            // Bounds checking
+                            if (left < 10) left = 10;
+                            if (left + tooltip.offsetWidth > window.innerWidth - 10) left = window.innerWidth - tooltip.offsetWidth - 10;
+
+                            tooltip.style.left = left + 'px';
+                            tooltip.style.top = (rect.top + window.scrollY - tooltip.offsetHeight - 8) + 'px';
+                        })
+                        .catch(err => {
+                            tooltip.style.display = 'none';
+                        });
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            });
+
+            // Hide tooltip when scrolling to avoid floating tooltips
+            const tWrapper = document.getElementById('table-wrapper');
+            if (tWrapper) {
+                tWrapper.addEventListener('scroll', () => {
+                    tooltip.style.display = 'none';
+                });
+            }
 
             // Load default schedule on initialization
             loadSchedule(weekSelect.value, yearSelect.value);

@@ -2,6 +2,8 @@ import openpyxl
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
+import json
+import pymysql
 from werkzeug.utils import secure_filename
 import xlrd
 
@@ -14,6 +16,22 @@ CORS(app)  # This will enable CORS for all routes
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Load database configuration
+DB_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'db_config.json')
+DB_CONFIG = {}
+if os.path.exists(DB_CONFIG_PATH):
+    with open(DB_CONFIG_PATH, 'r', encoding='utf-8') as f:
+        DB_CONFIG = json.load(f)
+
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_CONFIG.get('DB_HOST', 'localhost'),
+        user=DB_CONFIG.get('DB_USER', 'root'),
+        password=DB_CONFIG.get('DB_PASSWORD', ''),
+        database=DB_CONFIG.get('DB_NAME', 'qldt'),
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 @app.route('/api/upload', methods=['POST'])
 def upload_schedule():
@@ -393,6 +411,36 @@ def _parse_xls(file_path):
         data.append(row_data)
 
     return data
+
+@app.route('/api/subject_info', methods=['GET'])
+def get_subject_info():
+    chapter_code = request.args.get('chapter_code')
+    if not chapter_code:
+        return jsonify({"error": "Thiếu mã bài học (chapter_code) đính kèm."}), 400
+        
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # Join chapter and subject tables to get ChapterName and SubjectName
+            sql = """
+                SELECT c.ChapterName, s.SubjectName 
+                FROM chapter c 
+                JOIN subject s ON c.SubjectID = s.ID 
+                WHERE c.ChapterCode = %s
+            """
+            cursor.execute(sql, (chapter_code,))
+            result = cursor.fetchone()
+            
+            if result:
+                return jsonify(result), 200
+            else:
+                return jsonify({"error": f"Không tìm thấy môn học/bài học cho mã '{chapter_code}'."}), 404
+    except Exception as e:
+        app.logger.error(f"Database error: {e}")
+        return jsonify({"error": f"Lỗi cơ sở dữ liệu: {str(e)}"}), 500
+    finally:
+        if 'connection' in locals() and connection.open:
+            connection.close()
 
 @app.route('/api/schedule')
 def get_schedule():
