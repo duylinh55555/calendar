@@ -21,6 +21,7 @@ def upload_schedule():
         return jsonify({"error": "Không có file nào được chọn."}), 400
     file = request.files['file']
     week = request.form.get('week')
+    year = request.form.get('year')
 
     if file.filename == '':
         return jsonify({"error": "Tên file trống."}), 400
@@ -31,12 +32,17 @@ def upload_schedule():
         # Preserve original extension
         ext = os.path.splitext(file.filename)[1].lower()
         safe_week = week.replace('/', '_').replace('\\', '_')
-        filename = f"{safe_week}{ext}"
+        path_prefix = safe_week
+        if year:
+            safe_year = year.replace('/', '_').replace('\\', '_')
+            path_prefix = f"{safe_year}_{safe_week}"
+            
+        filename = f"{path_prefix}{ext}"
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
         # Delete conflicting format
         alt_ext = '.xlsx' if ext == '.xls' else '.xls'
-        alt_file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{safe_week}{alt_ext}")
+        alt_file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{path_prefix}{alt_ext}")
         if os.path.exists(alt_file_path):
             try:
                 os.remove(alt_file_path)
@@ -391,6 +397,7 @@ def _parse_xls(file_path):
 @app.route('/api/schedule')
 def get_schedule():
     week = request.args.get('week')
+    year = request.args.get('year')
     try:
         # Construct the path to the Excel file relative to the script's location
         script_dir = os.path.dirname(__file__)  # a.k.a. 'backend' folder
@@ -399,14 +406,19 @@ def get_schedule():
         file_path = None
         if week:
             safe_week = week.replace('/', '_').replace('\\', '_')
-            path_xlsx = os.path.join(app.config['UPLOAD_FOLDER'], f"{safe_week}.xlsx")
-            path_xls = os.path.join(app.config['UPLOAD_FOLDER'], f"{safe_week}.xls")
+            path_prefix = safe_week
+            if year:
+                safe_year = year.replace('/', '_').replace('\\', '_')
+                path_prefix = f"{safe_year}_{safe_week}"
+                
+            path_xlsx = os.path.join(app.config['UPLOAD_FOLDER'], f"{path_prefix}.xlsx")
+            path_xls = os.path.join(app.config['UPLOAD_FOLDER'], f"{path_prefix}.xls")
             if os.path.exists(path_xlsx):
                 file_path = path_xlsx
             elif os.path.exists(path_xls):
                 file_path = path_xls
             else:
-                return jsonify({"error": f"Không tìm thấy dữ liệu lịch cho '{week}'. Vui lòng tải lên file lịch cho tuần này."}), 404
+                return jsonify({"error": f"Không tìm thấy dữ liệu lịch cho '{week}' năm học '{year or 'Mặc định'}'. Vui lòng tải lên file lịch."}), 404
         else:
             path_xlsx = os.path.join(project_root, 'sample.xlsx')
             path_xls = os.path.join(project_root, 'sample.xls')

@@ -225,6 +225,13 @@
 
         <div class="controls"
             style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+            <label for="year-select" style="font-weight: bold; font-size: 14px;">Năm học:</label>
+            <select id="year-select" style="padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="2024 - 2025">2024 - 2025</option>
+                <option value="2025 - 2026" selected>2025 - 2026</option>
+                <option value="2026 - 2027">2026 - 2027</option>
+            </select>
+
             <label for="week-select" style="font-weight: bold; font-size: 14px;">Chọn tuần:</label>
             <select id="week-select" style="padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
                 <!-- Dữ liệu được thêm qua JS -->
@@ -281,6 +288,7 @@
             const daySelect = document.getElementById('day-select');
             const uploadBtn = document.getElementById('upload-btn');
             const fileUpload = document.getElementById('file-upload');
+            const yearSelect = document.getElementById('year-select');
 
             let currentData = null;
             let currentGridObj = null;
@@ -315,6 +323,7 @@
             fileUpload.addEventListener('change', () => {
                 const file = fileUpload.files[0];
                 const week = weekSelect.value;
+                const year = yearSelect.value;
                 if (!file) {
                     return;
                 }
@@ -322,6 +331,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('week', week);
+                formData.append('year', year);
 
                 const origText = uploadBtn.textContent;
                 uploadBtn.textContent = 'Đang tải...';
@@ -341,7 +351,7 @@
                             alert('Lỗi: ' + resObj.data.error);
                         } else {
                             alert('Tải lên thành công!');
-                            loadSchedule(week); // Auto refresh the schedule
+                            loadSchedule(week, year); // Auto refresh the schedule
                         }
                     })
                     .catch(err => {
@@ -353,18 +363,25 @@
             });
 
             weekSelect.addEventListener('change', () => {
-                loadSchedule(weekSelect.value);
+                loadSchedule(weekSelect.value, yearSelect.value);
             });
 
-            function loadSchedule(week = null) {
+            yearSelect.addEventListener('change', () => {
+                loadSchedule(weekSelect.value, yearSelect.value);
+            });
+
+            function loadSchedule(week = null, year = null) {
                 loadingState.style.display = 'block';
                 tableWrapper.style.display = 'none';
                 errorState.style.display = 'none';
                 tableBody.innerHTML = ''; // clear previous payload
 
                 let url = 'http://127.0.0.1:5001/api/schedule';
-                if (week) {
-                    url += `?week=${encodeURIComponent(week)}`;
+                const params = [];
+                if (week) params.push(`week=${encodeURIComponent(week)}`);
+                if (year) params.push(`year=${encodeURIComponent(year)}`);
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
                 }
 
                 fetch(url)
@@ -1002,7 +1019,7 @@
             window.addEventListener('resize', updateTimeline);
 
             // Load default schedule on initialization
-            loadSchedule();
+            loadSchedule(weekSelect.value, yearSelect.value);
         });
     </script>
 
