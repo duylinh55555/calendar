@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.env
+backend/venv/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sw?
+
+# Project specific debug/output files
+backend/api_output.json
+backend/debug_output.txt
+sample_data.json
+sample_data_curl.json
+sample_data_py.json
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
+# Uploads directory (ignore contents, keep directory)
+backend/uploads/*
+!backend/uploads/.gitkeep

@@ -1,0 +1,977 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch học</title>
+    <!-- Thêm Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Reset & Base */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Times New Roman', Arial, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            line-height: 1.2;
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        /* Container & Header */
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 10px;
+        }
+
+        /* Loading State */
+        #loading-state {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        /* Error State */
+        #error-state {
+            display: none;
+            color: red;
+            font-weight: bold;
+            padding: 10px;
+            text-align: center;
+        }
+
+        /* Table Wrapper */
+        .table-wrapper {
+            background: #ffffff;
+            display: none;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        /* Excel-like Table Styles */
+        table {
+            border-collapse: collapse;
+            table-layout: auto;
+            /* Let the browser size columns tightly based on content */
+            width: max-content;
+            border: 2px solid #000;
+            /* Thicker outer border if desired */
+        }
+
+        th,
+        td {
+            border: 1px solid #000000;
+            padding: 2px 4px;
+            /* Rất khít */
+            text-align: center;
+            vertical-align: middle;
+            font-size: 11px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        /* The very first header row often has red text based on the image */
+        thead,
+        tr:nth-child(1) th,
+        tr:nth-child(1) td,
+        tr:nth-child(2) th,
+        tr:nth-child(2) td {
+            font-weight: bold;
+            text-align: center;
+            vertical-align: middle;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #ffffff !important;
+        }
+
+        .sticky-left::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -1px;
+            width: 1px;
+            height: 100%;
+            background-color: #000000;
+            z-index: 1;
+        }
+
+        .sticky-left::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -1px;
+            width: 1px;
+            height: 100%;
+            background-color: #000000;
+            z-index: 1;
+        }
+
+
+        /* Toggle Switch */
+        .toggle-switch-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+        }
+
+        .toggle-label {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 100px;
+            height: 28px;
+            background-color: #e9ecef;
+            border-radius: 28px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 28px;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 48px;
+            left: 1px;
+            bottom: 1px;
+            background-color: #ffffff;
+            transition: .4s;
+            border-radius: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(49px);
+        }
+
+        .toggle-texts {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .toggle-texts span {
+            font-size: 12px;
+            font-weight: bold;
+            color: #6c757d;
+            transition: color 0.4s;
+            flex: 1;
+            text-align: center;
+        }
+
+        input:not(:checked)~.toggle-texts .text-week {
+            color: #000000;
+        }
+
+        input:checked~.toggle-texts .text-day {
+            color: #000000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Thời khóa biểu</h1>
+
+        <div class="controls"
+            style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+            <label for="week-select" style="font-weight: bold; font-size: 14px;">Chọn tuần:</label>
+            <select id="week-select" style="padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
+                <!-- Dữ liệu được thêm qua JS -->
+            </select>
+
+            <div class="toggle-switch-container">
+                <span class="toggle-label">Chế độ xem:</span>
+                <label class="toggle-switch" title="Chuyển đổi giữa chế độ Tuần và Ngày">
+                    <input type="checkbox" id="view-mode-toggle">
+                    <span class="slider"></span>
+                    <div class="toggle-texts">
+                        <span class="text-week">Tuần</span>
+                        <span class="text-day">Ngày</span>
+                    </div>
+                </label>
+            </div>
+
+            <label id="day-select-label" for="day-select"
+                style="font-weight: bold; font-size: 14px; margin-left: 10px; display: none;">Chọn ngày:</label>
+            <select id="day-select"
+                style="padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; display: none;">
+            </select>
+
+            <input type="file" id="file-upload" accept=".xlsx, .xls" style="display: none;">
+            <button id="upload-btn"
+                style="padding: 6px 12px; font-weight: bold; background-color: #007bff; border: none; cursor: pointer; border-radius: 4px; color: white;">Tải
+                lên</button>
+        </div>
+
+        <div id="loading-state">
+            <div class="spinner"></div>
+            <p>Đang tải dữ liệu lịch học...</p>
+        </div>
+
+        <div id="error-state">
+            Lỗi khi kết nối hoặc tải dữ liệu. Vui lòng đảm bảo Backend đang chạy.
+        </div>
+
+        <div class="table-wrapper" id="table-wrapper">
+            <table id="schedule-table">
+                <tbody id="schedule-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tableBody = document.getElementById('schedule-body');
+            const loadingState = document.getElementById('loading-state');
+            const tableWrapper = document.getElementById('table-wrapper');
+            const errorState = document.getElementById('error-state');
+            const weekSelect = document.getElementById('week-select');
+            const viewModeToggle = document.getElementById('view-mode-toggle');
+            const daySelect = document.getElementById('day-select');
+            const uploadBtn = document.getElementById('upload-btn');
+            const fileUpload = document.getElementById('file-upload');
+
+            let currentData = null;
+            let currentGridObj = null;
+            let isDaySelectPopulatedForCurrentData = false;
+
+            // Handle toggles
+            viewModeToggle.addEventListener('change', () => {
+                renderTable();
+            });
+            daySelect.addEventListener('change', () => {
+                if (viewModeToggle.checked) renderTable();
+            });
+
+            // Set up dropdown list of weeks
+            for (let month = 1; month <= 12; month++) {
+                for (let week = 1; week <= 5; week++) {
+                    const option = document.createElement('option');
+                    const text = `Tuần ${week} Tháng ${month}`;
+                    option.value = text;
+                    option.textContent = text;
+                    weekSelect.appendChild(option);
+                }
+            }
+
+            // Set default week to 'Tuần 4 Tháng 2'
+            weekSelect.value = 'Tuần 4 Tháng 2';
+
+            uploadBtn.addEventListener('click', () => {
+                fileUpload.click();
+            });
+
+            fileUpload.addEventListener('change', () => {
+                const file = fileUpload.files[0];
+                const week = weekSelect.value;
+                if (!file) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('week', week);
+
+                const origText = uploadBtn.textContent;
+                uploadBtn.textContent = 'Đang tải...';
+                uploadBtn.disabled = true;
+
+                fetch('http://127.0.0.1:5001/api/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(res => res.json().then(data => ({ status: res.status, data })))
+                    .then(resObj => {
+                        uploadBtn.textContent = origText;
+                        uploadBtn.disabled = false;
+                        fileUpload.value = ''; // Reset input to allow choosing the same file again
+
+                        if (resObj.status >= 400 && resObj.data.error) {
+                            alert('Lỗi: ' + resObj.data.error);
+                        } else {
+                            alert('Tải lên thành công!');
+                            loadSchedule(week); // Auto refresh the schedule
+                        }
+                    })
+                    .catch(err => {
+                        uploadBtn.textContent = origText;
+                        uploadBtn.disabled = false;
+                        fileUpload.value = ''; // Reset input on error
+                        alert('Lỗi hệ thống khi tải lên: ' + err.message);
+                    });
+            });
+
+            weekSelect.addEventListener('change', () => {
+                loadSchedule(weekSelect.value);
+            });
+
+            function loadSchedule(week = null) {
+                loadingState.style.display = 'block';
+                tableWrapper.style.display = 'none';
+                errorState.style.display = 'none';
+                tableBody.innerHTML = ''; // clear previous payload
+
+                let url = 'http://127.0.0.1:5001/api/schedule';
+                if (week) {
+                    url += `?week=${encodeURIComponent(week)}`;
+                }
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(errData => {
+                                throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        loadingState.style.display = 'none';
+                        tableWrapper.style.display = 'block';
+
+                        currentData = data;
+                        currentGridObj = buildGrid(data);
+                        isDaySelectPopulatedForCurrentData = false;
+
+                        renderTable();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching schedule:', error);
+                        loadingState.style.display = 'none';
+                        errorState.style.display = 'block';
+                        errorState.textContent = 'Lỗi tải dữ liệu: ' + error.message;
+                    });
+            }
+
+            function buildGrid(data) {
+                let grid = {};
+                let maxCol = 0;
+
+                for (let r = 0; r < data.length; r++) {
+                    let rowData = data[r];
+                    if (!grid[r]) grid[r] = {};
+
+                    let colIdx = 0;
+                    for (let c = 0; c < rowData.length; c++) {
+                        let cell = rowData[c];
+
+                        while (grid[r][colIdx] !== undefined) {
+                            colIdx++;
+                        }
+
+                        for (let i = 0; i < (cell.rowspan || 1); i++) {
+                            for (let j = 0; j < (cell.colspan || 1); j++) {
+                                if (!grid[r + i]) grid[r + i] = {};
+                                grid[r + i][colIdx + j] = {
+                                    isOriginal: (i === 0 && j === 0),
+                                    cell: cell,
+                                    origR: r,
+                                    origC: colIdx
+                                };
+                            }
+                        }
+                        maxCol = Math.max(maxCol, colIdx + (cell.colspan || 1));
+                        colIdx += (cell.colspan || 1);
+                    }
+                }
+                return { grid, numRows: data.length, numCols: maxCol };
+            }
+
+            function renderTable() {
+                if (!currentData || !currentGridObj) return;
+                const viewMode = document.getElementById('view-mode-toggle').checked ? 'day' : 'week';
+
+                if (viewMode === 'day') {
+                    document.getElementById('day-select-label').style.display = 'inline-block';
+                    document.getElementById('day-select').style.display = 'inline-block';
+                    if (!isDaySelectPopulatedForCurrentData) {
+                        populateDaySelect();
+                        isDaySelectPopulatedForCurrentData = true;
+                    }
+                    renderDayView();
+                } else {
+                    document.getElementById('day-select-label').style.display = 'none';
+                    document.getElementById('day-select').style.display = 'none';
+                    renderWeekView();
+                }
+            }
+
+            function populateDaySelect() {
+                const daySelect = document.getElementById('day-select');
+                const currentVal = daySelect.value;
+                daySelect.innerHTML = '';
+
+                let grid = currentGridObj.grid;
+                let row0 = grid[0];
+                let days = [];
+                if (row0) {
+                    for (let c = 2; c < currentGridObj.numCols; c++) {
+                        let gCell = row0[c];
+                        if (gCell && gCell.isOriginal && gCell.cell.value) {
+                            let dayName = String(gCell.cell.value).trim().split('\n')[0];
+                            days.push({ col: c, name: dayName });
+                        }
+                    }
+                }
+
+                let today = new Date().getDay();
+                let targetIndex = 0;
+
+                days.forEach((day, index) => {
+                    let option = document.createElement('option');
+                    option.value = day.col;
+                    option.textContent = day.name;
+                    daySelect.appendChild(option);
+
+                    let upperName = day.name.toUpperCase();
+                    if (upperName.includes('THỨ HAI') && today === 1) targetIndex = index;
+                    if (upperName.includes('THỨ BA') && today === 2) targetIndex = index;
+                    if (upperName.includes('THỨ TƯ') && today === 3) targetIndex = index;
+                    if (upperName.includes('THỨ NĂM') && today === 4) targetIndex = index;
+                    if (upperName.includes('THỨ SÁU') && today === 5) targetIndex = index;
+                    if (upperName.includes('THỨ BẢY') && today === 6) targetIndex = index;
+                    if (upperName.includes('CHỦ NHẬT') && today === 0) targetIndex = index;
+                });
+
+                let found = Array.from(daySelect.options).some(opt => opt.value === currentVal);
+                if (found) {
+                    daySelect.value = currentVal;
+                } else if (days.length > 0) {
+                    daySelect.selectedIndex = targetIndex;
+                }
+            }
+
+            function renderWeekView() {
+                tableWrapper.style.height = 'auto';
+                document.getElementById('schedule-table').style.height = 'auto';
+                tableBody.innerHTML = '';
+
+                // Vô hiệu hóa timeline trong chế độ Tuần
+                const timeline = document.getElementById('timeline');
+                if (timeline) {
+                    timeline.style.display = 'none';
+                }
+
+                currentData.forEach((rowData, index) => {
+                    const row = tableBody.insertRow();
+                    rowData.forEach(cellData => {
+                        if (cellData && cellData.rowspan !== 0 && cellData.colspan !== 0) {
+                            const cell = row.insertCell();
+                            let rawValue = cellData.value;
+                            let strValue = "";
+                            if (rawValue !== null && rawValue !== undefined) {
+                                strValue = `${rawValue}`;
+                            }
+                            if (strValue.includes && strValue.includes('\n')) {
+                                const lines = strValue.split('\n');
+                                cell.innerHTML = lines.map(line => `<div>${line}</div>`).join('');
+                            } else {
+                                cell.textContent = strValue;
+                            }
+                            if (cellData.rowspan > 1) cell.setAttribute('rowspan', cellData.rowspan);
+                            if (cellData.colspan > 1) cell.setAttribute('colspan', cellData.colspan);
+                            if (cellData.is_bold) {
+                                cell.style.fontWeight = 'bold';
+                            }
+                            if (cellData.font_color) {
+                                cell.style.color = cellData.font_color;
+                            }
+
+                            // Keep column 0 sticky
+                            let currentGridCol = 0;
+                            while (currentGridObj.grid[index] && currentGridObj.grid[index][currentGridCol] && currentGridObj.grid[index][currentGridCol].cell !== cellData) {
+                                currentGridCol++;
+                            }
+                            if (currentGridCol === 0) {
+                                cell.classList.add("sticky-left");
+                                cell.classList.add("sticky-col-0");
+                                cell.style.position = "sticky";
+                                cell.style.left = "0";
+                                cell.style.backgroundColor = "#ffffff";
+                                if (index < 2) {
+                                    cell.style.zIndex = "12"; // Top-left corner needs to be above top header (10) and left column (11)
+                                } else {
+                                    cell.style.zIndex = "11";
+                                }
+                            }
+                            if (currentGridCol === 1) {
+                                cell.classList.add("sticky-left");
+                                cell.classList.add("sticky-col-1");
+                                cell.style.position = "sticky";
+                                cell.style.backgroundColor = "#ffffff";
+                                if (index < 2) {
+                                    cell.style.zIndex = "12";
+                                } else {
+                                    cell.style.zIndex = "11";
+                                }
+                            }
+                        }
+                    });
+                });
+
+                // Update the left offset for the second sticky column based on the width of the first
+                setTimeout(() => {
+                    const table = document.getElementById('schedule-table');
+                    if (!table) return;
+                    const col0Cells = table.querySelectorAll('.sticky-col-0');
+                    if (col0Cells.length > 0) {
+                        let w = 0;
+                        // Find a col 0 cell that has colspan 1 to accurately measure width
+                        for (let i = 0; i < col0Cells.length; i++) {
+                            if (!col0Cells[i].hasAttribute('colspan')) {
+                                w = col0Cells[i].getBoundingClientRect().width;
+                                break;
+                            }
+                        }
+                        // Default fallback if all have colspan (rare)
+                        if (w === 0) w = col0Cells[0].getBoundingClientRect().width;
+
+                        const col1Cells = table.querySelectorAll('.sticky-col-1');
+                        col1Cells.forEach(c => {
+                            c.style.left = w + "px";
+                        });
+                    }
+                }, 0);
+            }
+
+            function updateTimeline() {
+                const viewMode = document.getElementById('view-mode-toggle').checked ? 'day' : 'week';
+                const timeline = document.getElementById('timeline');
+                const tableWrapper = document.getElementById('table-wrapper');
+                const table = document.getElementById('schedule-table');
+
+                if (viewMode !== 'day') {
+                    if (timeline) timeline.style.display = 'none';
+                    return;
+                }
+
+                // Only show timeline on the current day
+                const daySelect = document.getElementById('day-select');
+                const today = new Date().getDay();
+                let isCurrentDay = false;
+
+                if (daySelect && daySelect.options.length > 0 && daySelect.selectedIndex >= 0) {
+                    const selectedDayName = daySelect.options[daySelect.selectedIndex].text.toUpperCase();
+                    if (
+                        (selectedDayName.includes('THỨ HAI') && today === 1) ||
+                        (selectedDayName.includes('THỨ BA') && today === 2) ||
+                        (selectedDayName.includes('THỨ TƯ') && today === 3) ||
+                        (selectedDayName.includes('THỨ NĂM') && today === 4) ||
+                        (selectedDayName.includes('THỨ SÁU') && today === 5) ||
+                        (selectedDayName.includes('THỨ BẢY') && today === 6) ||
+                        (selectedDayName.includes('CHỦ NHẬT') && today === 0)
+                    ) {
+                        isCurrentDay = true;
+                    }
+                }
+
+                if (!isCurrentDay) {
+                    if (timeline) timeline.style.display = 'none';
+                    return;
+                }
+
+                const now = new Date();
+                const currentMins = now.getHours() * 60 + now.getMinutes();
+                const hoursStr = String(now.getHours()).padStart(2, '0');
+                const minsStr = String(now.getMinutes()).padStart(2, '0');
+                const timeString = `${hoursStr}:${minsStr}`;
+
+                const timeSlots = [
+                    { period: 1, start: 6 * 60 + 45, end: 7 * 60 + 30 },
+                    { period: 2, start: 7 * 60 + 35, end: 8 * 60 + 20 },
+                    { period: 3, start: 8 * 60 + 25, end: 9 * 60 + 10 },
+                    { period: 4, start: 9 * 60 + 15, end: 10 * 60 + 0 },
+                    { period: 5, start: 10 * 60 + 5, end: 10 * 60 + 50 },
+                    { period: 6, start: 10 * 60 + 55, end: 11 * 60 + 40 },
+                    { period: 7, start: 13 * 60 + 30, end: 14 * 60 + 15 },
+                    { period: 8, start: 14 * 60 + 20, end: 15 * 60 + 5 },
+                    { period: 9, start: 15 * 60 + 10, end: 15 * 60 + 55 }
+                ];
+
+                let targetY = -1;
+                let found = false;
+                const wrapperRect = tableWrapper.getBoundingClientRect();
+
+                if (currentMins < timeSlots[0].start) {
+                    const row = document.querySelector('tr[data-period="1"]');
+                    if (row) {
+                        targetY = row.getBoundingClientRect().top - wrapperRect.top + tableWrapper.scrollTop;
+                        found = true;
+                    }
+                } else if (currentMins > timeSlots[timeSlots.length - 1].end) {
+                    const row = document.querySelector('tr[data-period="9"]');
+                    if (row) {
+                        targetY = row.getBoundingClientRect().bottom - wrapperRect.top + tableWrapper.scrollTop;
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    for (let i = 0; i < timeSlots.length; i++) {
+                        const slot = timeSlots[i];
+                        if (currentMins >= slot.start && currentMins <= slot.end) {
+                            const row = document.querySelector(`tr[data-period="${slot.period}"]`);
+                            if (row) {
+                                const rect = row.getBoundingClientRect();
+                                const progress = (currentMins - slot.start) / (slot.end - slot.start);
+                                targetY = rect.top - wrapperRect.top + tableWrapper.scrollTop + progress * rect.height;
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    for (let i = 0; i < timeSlots.length - 1; i++) {
+                        const prev = timeSlots[i];
+                        const next = timeSlots[i + 1];
+                        if (currentMins > prev.end && currentMins < next.start) {
+                            const rowPrev = document.querySelector(`tr[data-period="${prev.period}"]`);
+                            const rowNext = document.querySelector(`tr[data-period="${next.period}"]`);
+                            if (rowPrev && rowNext) {
+                                const rectPrev = rowPrev.getBoundingClientRect();
+                                const rectNext = rowNext.getBoundingClientRect();
+                                const gapStart = rectPrev.bottom - wrapperRect.top + tableWrapper.scrollTop;
+                                const gapEnd = rectNext.top - wrapperRect.top + tableWrapper.scrollTop;
+                                const progress = (currentMins - prev.end) / (next.start - prev.end);
+                                targetY = gapStart + progress * (gapEnd - gapStart);
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetY >= 0) {
+                    let tl = document.getElementById('timeline');
+                    if (!tl) {
+                        tableWrapper.style.position = 'relative';
+                        tl = document.createElement('div');
+                        tl.id = 'timeline';
+                        tl.style.position = 'absolute';
+                        tl.style.left = '0';
+                        tl.style.height = '2px';
+                        tl.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+                        tl.style.boxShadow = '0 0 4px rgba(255, 0, 0, 0.5)';
+                        tl.style.zIndex = '10'; // Behind sticky headers (11, 12)
+                        tl.style.pointerEvents = 'none';
+                        tl.style.transition = 'top 0.5s ease-in-out';
+
+                        const dot = document.createElement('div');
+                        dot.id = 'timeline-dot';
+                        dot.style.position = 'absolute';
+                        dot.style.right = '0';
+                        dot.style.top = '-4px';
+                        dot.style.width = '10px';
+                        dot.style.height = '10px';
+                        dot.style.backgroundColor = 'red';
+                        dot.style.borderRadius = '50%';
+                        dot.style.transition = 'transform 0.1s ease-out';
+                        dot.style.zIndex = '10';
+
+                        const timeLabel = document.createElement('div');
+                        timeLabel.id = 'timeline-label';
+                        timeLabel.style.position = 'absolute';
+                        timeLabel.style.right = '0';
+                        timeLabel.style.bottom = '8px';
+                        timeLabel.style.color = 'red';
+                        timeLabel.style.fontSize = '12px';
+                        timeLabel.style.fontWeight = 'bold';
+                        timeLabel.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                        timeLabel.style.border = '1px solid currentColor';
+                        timeLabel.style.padding = '2px 4px';
+                        timeLabel.style.borderRadius = '4px';
+                        timeLabel.style.transition = 'transform 0.1s ease-out';
+                        timeLabel.style.zIndex = '10';
+
+                        tl.appendChild(dot);
+                        tl.appendChild(timeLabel);
+
+                        tableWrapper.appendChild(tl);
+
+                        tableWrapper.addEventListener('scroll', () => {
+                            const dotEl = document.getElementById('timeline-dot');
+                            const labelEl = document.getElementById('timeline-label');
+                            if (dotEl && labelEl) {
+                                // Since we set `right: 0`, the wrapper's scroll offsets the relative elements based on how far we scroll right.
+                                const maxScrollLeft = tableWrapper.scrollWidth - tableWrapper.clientWidth;
+                                const offset = maxScrollLeft - tableWrapper.scrollLeft;
+                                dotEl.style.transform = `translateX(${-offset}px)`;
+                                labelEl.style.transform = `translateX(${-offset}px)`;
+                            }
+                        });
+                    }
+
+                    tl.style.display = 'block';
+                    tl.style.top = `${targetY}px`;
+
+                    const labelEl = document.getElementById('timeline-label');
+                    if (labelEl) {
+                        labelEl.textContent = timeString;
+                    }
+
+                    // Wait a moment for layout to settle for table width
+                    setTimeout(() => {
+                        if (tl && table) {
+                            tl.style.width = `${table.offsetWidth}px`;
+
+                            // Align dots right away based on initial layout
+                            const dotEl = document.getElementById('timeline-dot');
+                            const lblEl = document.getElementById('timeline-label');
+                            if (dotEl && lblEl) {
+                                const maxScrollLeft = tableWrapper.scrollWidth - tableWrapper.clientWidth;
+                                const offset = maxScrollLeft - tableWrapper.scrollLeft;
+                                dotEl.style.transform = `translateX(${-offset}px)`;
+                                lblEl.style.transform = `translateX(${-offset}px)`;
+                            }
+                        }
+                    }, 0);
+                }
+            }
+
+            function parseTiet(str) {
+                str = str.trim();
+                if (!str) return null;
+                let start = -1, end = -1;
+                let m = str.match(/^(\d+)\s*[-\,]\s*(\d+)$/);
+                if (m) {
+                    start = parseInt(m[1], 10);
+                    end = parseInt(m[2], 10);
+                } else if (str.length === 2 && !isNaN(str)) {
+                    start = parseInt(str[0], 10);
+                    end = parseInt(str[1], 10);
+                } else if (str.length === 1 && !isNaN(str)) {
+                    start = parseInt(str, 10);
+                    end = parseInt(str, 10);
+                } else {
+                    let nums = str.match(/\d+/g);
+                    if (nums && nums.length > 0) {
+                        start = parseInt(nums[0], 10);
+                        end = parseInt(nums[nums.length - 1], 10);
+                    }
+                }
+
+                if (start >= 1 && start <= 9 && end >= start && end <= 9) {
+                    return { start, end };
+                }
+                if (start >= 1 && start <= 9) return { start, end: start };
+                return null;
+            }
+
+            function renderDayView() {
+                tableWrapper.style.height = 'calc(100vh - 120px)';
+                document.getElementById('schedule-table').style.height = '100%';
+                tableBody.innerHTML = '';
+                const daySelect = document.getElementById('day-select');
+                if (!daySelect.value) return;
+
+                const dayStartCol = parseInt(daySelect.value, 10);
+                const grid = currentGridObj.grid;
+                const numRows = currentGridObj.numRows;
+
+                let doiTuongs = [];
+                for (let r = 2; r < numRows; r++) {
+                    let gCell = grid[r][1];
+                    if (gCell && gCell.isOriginal) {
+                        let dtName = String(gCell.cell.value || "").trim();
+                        if (dtName) {
+                            let rSpan = gCell.cell.rowspan || 1;
+                            doiTuongs.push({
+                                name: dtName,
+                                rStart: r,
+                                rEnd: r + rSpan - 1,
+                                is_bold: gCell.cell.is_bold,
+                                font_color: gCell.cell.font_color
+                            });
+                        }
+                    }
+                }
+
+                let daySchedule = {};
+                for (let p = 1; p <= 9; p++) {
+                    daySchedule[p] = {};
+                }
+
+                let hasAnyClass = false;
+
+                for (const dt of doiTuongs) {
+                    for (let r = dt.rStart; r <= dt.rEnd; r++) {
+                        let gTiet = grid[r][dayStartCol];
+                        if (gTiet && gTiet.isOriginal) {
+                            let tietVal = String(gTiet.cell.value || "").trim();
+                            if (tietVal) {
+                                let parsed = parseTiet(tietVal);
+                                if (!parsed) continue;
+
+                                let tSpan = gTiet.cell.rowspan || 1;
+                                let contentHTML = '';
+                                for (let tr = r; tr < r + tSpan && tr <= dt.rEnd; tr++) {
+                                    let rowHTML = '';
+                                    for (let c = dayStartCol + 1; c <= dayStartCol + 4; c++) {
+                                        let gDetail = grid[tr][c];
+                                        if (gDetail && gDetail.isOriginal && gDetail.cell.value) {
+                                            let val = String(gDetail.cell.value).replace(/\n/g, '<br>');
+                                            let style = '';
+                                            if (gDetail.cell.is_bold) style += 'font-weight:bold;';
+                                            if (gDetail.cell.font_color) style += 'color:' + gDetail.cell.font_color + ';';
+                                            if (style) val = `<span style="${style}">${val}</span>`;
+                                            if (rowHTML) rowHTML += '<br>';
+                                            rowHTML += val;
+                                        }
+                                    }
+                                    if (rowHTML) {
+                                        contentHTML += `<div style="margin-bottom: 4px; padding: 4px; background: #fff; border: 1px solid #eee; border-radius: 4px;">${rowHTML}</div>`;
+                                    }
+                                }
+                                if (contentHTML) {
+                                    let { start, end } = parsed;
+                                    if (end > 9) end = 9;
+                                    if (start < 1) start = 1;
+
+                                    if (daySchedule[start]) {
+                                        daySchedule[start][dt.name] = {
+                                            html: contentHTML,
+                                            rowspan: end - start + 1,
+                                            skip: false
+                                        };
+                                        hasAnyClass = true;
+                                        for (let p = start + 1; p <= end; p++) {
+                                            if (daySchedule[p]) {
+                                                daySchedule[p][dt.name] = { skip: true };
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!hasAnyClass) {
+                    let row = tableBody.insertRow();
+                    let cell = row.insertCell();
+                    cell.textContent = "Không có lịch học cho ngày này.";
+                    cell.style.padding = "20px";
+                    cell.colSpan = doiTuongs.length + 1;
+                    const timeline = document.getElementById('timeline');
+                    if (timeline) timeline.style.display = 'none';
+                    return;
+                }
+
+                let headerRow = tableBody.insertRow();
+                let tdTiet = headerRow.insertCell();
+                tdTiet.textContent = "Thời gian (Tiết)";
+                tdTiet.style.backgroundColor = "#f0f0f0";
+                tdTiet.style.padding = "10px";
+                tdTiet.style.position = "sticky";
+                tdTiet.style.left = "0";
+                tdTiet.style.zIndex = "12";
+                tdTiet.classList.add("sticky-left");
+
+                doiTuongs.forEach(dt => {
+                    let td = headerRow.insertCell();
+                    let lines = dt.name.split('\n');
+                    td.innerHTML = lines.map(line => `<div>${line}</div>`).join('');
+                    if (dt.is_bold) td.style.fontWeight = 'bold';
+                    if (dt.font_color) td.style.color = dt.font_color;
+                    td.style.backgroundColor = "#f0f0f0";
+                    td.style.minWidth = "120px";
+                });
+
+                for (let p = 1; p <= 9; p++) {
+                    let row = tableBody.insertRow();
+                    row.style.height = "11.11%";
+                    row.setAttribute('data-period', p);
+                    let tdTiet = row.insertCell();
+                    tdTiet.textContent = p;
+                    tdTiet.style.fontWeight = 'bold';
+                    tdTiet.style.backgroundColor = "#fafafa";
+                    tdTiet.style.position = "sticky";
+                    tdTiet.style.left = "0";
+                    tdTiet.style.zIndex = "11";
+                    tdTiet.classList.add("sticky-left");
+
+                    doiTuongs.forEach(dt => {
+                        let cellInfo = daySchedule[p][dt.name];
+                        if (cellInfo && cellInfo.skip) {
+                            return; // skipped cell handled by rowspan
+                        }
+
+                        let td = row.insertCell();
+                        td.style.verticalAlign = "middle";
+                        td.style.textAlign = "left";
+                        td.style.padding = "5px";
+
+                        if (cellInfo && cellInfo.html) {
+                            td.innerHTML = cellInfo.html;
+                            td.style.backgroundColor = "#eef7ff";
+                            if (cellInfo.rowspan > 1) {
+                                td.setAttribute('rowspan', cellInfo.rowspan);
+                            }
+                        } else {
+                            td.innerHTML = '';
+                        }
+                    });
+                }
+                setTimeout(updateTimeline, 100);
+            }
+
+            // Automatically update timeline location
+            setInterval(updateTimeline, 60000);
+            window.addEventListener('resize', updateTimeline);
+
+            // Load default schedule on initialization
+            loadSchedule();
+        });
+    </script>
+
+</body>
+
+</html>
