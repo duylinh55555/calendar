@@ -92,13 +92,18 @@
         tr:nth-child(1) td,
         tr:nth-child(2) th,
         tr:nth-child(2) td {
-            font-weight: bold;
             text-align: center;
             vertical-align: middle;
             position: sticky;
             top: 0;
             z-index: 10;
             background-color: #ffffff !important;
+            font-weight: bold;
+        }
+
+        .sticky-col-0,
+        .sticky-col-1 {
+            font-weight: bold;
         }
 
         .sticky-left::before {
@@ -516,9 +521,6 @@
                             }
                             if (cellData.rowspan > 1) cell.setAttribute('rowspan', cellData.rowspan);
                             if (cellData.colspan > 1) cell.setAttribute('colspan', cellData.colspan);
-                            if (cellData.is_bold) {
-                                cell.style.fontWeight = 'bold';
-                            }
                             if (cellData.font_color) {
                                 cell.style.color = cellData.font_color;
                             }
@@ -827,7 +829,6 @@
                                 name: dtName,
                                 rStart: r,
                                 rEnd: r + rSpan - 1,
-                                is_bold: gCell.cell.is_bold,
                                 font_color: gCell.cell.font_color
                             });
                         }
@@ -852,14 +853,45 @@
 
                                 let tSpan = gTiet.cell.rowspan || 1;
                                 let contentHTML = '';
+                                let cellBgColor = ''; // Mặc định không tô
                                 for (let tr = r; tr < r + tSpan && tr <= dt.rEnd; tr++) {
                                     let rowHTML = '';
                                     for (let c = dayStartCol + 1; c <= dayStartCol + 4; c++) {
                                         let gDetail = grid[tr][c];
                                         if (gDetail && gDetail.isOriginal && gDetail.cell.value) {
-                                            let val = String(gDetail.cell.value).replace(/\n/g, '<br>');
+                                            let pureVal = String(gDetail.cell.value).replace(/\s+/g, ' ').trim(); // Chuẩn hóa khoảng trắng
+                                            let pureValLower = pureVal.toLowerCase();
+
+                                            // Sử dụng regex linh hoạt hỗ trợ cả khoảng trắng, xuống dòng, dấu câu
+                                            // và các trường hợp nhập dính liền chữ phổ biến như G đi với Đ (GĐC), K đi với C (KCNXH)
+                                            // Chỉ gán giá trị nếu chưa có màu (tránh bị ghi đè bởi ô con trống trong vòng lặp)
+                                            if (!cellBgColor) {
+                                                const suffix = /(?:[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/;
+                                                if (new RegExp('^ll' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = ''; // Coi như đánh dấu đã xử lý
+                                                } else if (new RegExp('^th' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = '#ffe4e1'; // Màu hồng nhạt (Misty Rose) cho TH
+                                                } else if (new RegExp('^tb' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = '#eef7ff'; // Xanh dương nhạt
+                                                } else if (new RegExp('^g' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = '#ffeeb5'; // Vàng nhạt (nổi bật)
+                                                } else if (new RegExp('^(?:t\\.?\\s*học|tự\\s*học)' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = '#d4edda'; // Xanh lá nhạt
+                                                } else if (new RegExp('^k' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = '#ffe4b5'; // Cam nhạt/Moccasin cho K
+                                                } else if (new RegExp('^tl' + suffix.source).test(pureValLower)) {
+                                                    cellBgColor = '#e6e6fa'; // Tím nhạt/Lavender cho TL
+                                                }
+                                            }
+
+                                            // Tách dòng sau dấu hai chấm. Nếu không có dấu hai chấm thì giữ nguyên.
+                                            let formattedVal = pureVal;
+                                            if (formattedVal.includes(':')) {
+                                                formattedVal = formattedVal.replace(/:\s*/, ':\n');
+                                            }
+                                            let val = formattedVal.replace(/\n/g, '<br>');
+
                                             let style = '';
-                                            if (gDetail.cell.is_bold) style += 'font-weight:bold;';
                                             if (gDetail.cell.font_color) style += 'color:' + gDetail.cell.font_color + ';';
                                             if (style) val = `<span style="${style}">${val}</span>`;
                                             if (rowHTML) rowHTML += '<br>';
@@ -867,7 +899,7 @@
                                         }
                                     }
                                     if (rowHTML) {
-                                        contentHTML += `<div style="margin-bottom: 4px; padding: 4px; background: #fff; border: 1px solid #eee; border-radius: 4px;">${rowHTML}</div>`;
+                                        contentHTML += `<div style="margin-bottom: 4px; padding: 4px; background: transparent; border: 1px solid rgba(0,0,0,0.1); border-radius: 4px;">${rowHTML}</div>`;
                                     }
                                 }
                                 if (contentHTML) {
@@ -879,7 +911,8 @@
                                         daySchedule[start][dt.name] = {
                                             html: contentHTML,
                                             rowspan: end - start + 1,
-                                            skip: false
+                                            skip: false,
+                                            bgColor: cellBgColor
                                         };
                                         hasAnyClass = true;
                                         for (let p = start + 1; p <= end; p++) {
@@ -919,7 +952,6 @@
                     let td = headerRow.insertCell();
                     let lines = dt.name.split('\n');
                     td.innerHTML = lines.map(line => `<div>${line}</div>`).join('');
-                    if (dt.is_bold) td.style.fontWeight = 'bold';
                     if (dt.font_color) td.style.color = dt.font_color;
                     td.style.backgroundColor = "#f0f0f0";
                     td.style.minWidth = "120px";
@@ -951,7 +983,9 @@
 
                         if (cellInfo && cellInfo.html) {
                             td.innerHTML = cellInfo.html;
-                            td.style.backgroundColor = "#eef7ff";
+                            if (cellInfo.bgColor) {
+                                td.style.backgroundColor = cellInfo.bgColor;
+                            }
                             if (cellInfo.rowspan > 1) {
                                 td.setAttribute('rowspan', cellInfo.rowspan);
                             }
