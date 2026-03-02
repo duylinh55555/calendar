@@ -5,10 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LỊCH HUẤN LUYỆN</title>
-    <!-- Thêm Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* CSS Reset & Base */
         * {
@@ -434,7 +430,7 @@
                 uploadBtn.textContent = 'Đang tải...';
                 uploadBtn.disabled = true;
 
-                fetch('http://127.0.0.1:5001/api/upload', {
+                fetch('/api/upload', {
                     method: 'POST',
                     body: formData
                 })
@@ -474,7 +470,7 @@
                 errorState.style.display = 'none';
                 tableBody.innerHTML = ''; // clear previous payload
 
-                let url = 'http://127.0.0.1:5001/api/schedule';
+                let url = '/api/schedule';
                 const params = [];
                 if (week) params.push(`week=${encodeURIComponent(week)}`);
                 if (year) params.push(`year=${encodeURIComponent(year)}`);
@@ -1204,7 +1200,7 @@
                 }
 
                 if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
-                    let url = `http://127.0.0.1:5001/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
+                    let url = `/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
                     if (organizationClass) {
                         url += `&organization_class=${encodeURIComponent(organizationClass)}`;
                     }
