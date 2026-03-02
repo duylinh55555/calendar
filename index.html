@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lịch học</title>
+    <title>LỊCH HUẤN LUYỆN</title>
     <!-- Thêm Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,14 +22,19 @@
             background-color: #ffffff;
             color: #000000;
             line-height: 1.2;
-            padding: 10px;
+            padding: 0;
+            /* No padding for full screen */
             font-size: 11px;
+            overflow: hidden;
+            /* Prevent double scrollbars on body */
         }
 
         /* Container & Header */
         .container {
-            width: 100%;
-            margin: 0 auto;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         h1 {
@@ -37,7 +42,7 @@
             font-size: 18px;
             font-weight: bold;
             color: #000000;
-            margin-bottom: 10px;
+            margin: 5px 0;
         }
 
         /* Loading State */
@@ -61,7 +66,10 @@
             background: #ffffff;
             display: none;
             width: 100%;
-            overflow-x: auto;
+            flex: 1;
+            /* Take remaining height */
+            overflow: auto;
+            border-top: 1px solid #ddd;
         }
 
         /* Excel-like Table Styles */
@@ -258,10 +266,10 @@
 <body>
 
     <div class="container">
-        <h1>Thời khóa biểu</h1>
+        <h1>LỊCH HUẤN LUYỆN</h1>
 
         <div class="controls"
-            style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+            style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px; flex-wrap: wrap; padding: 0 10px;">
             <label for="year-select" style="font-weight: bold; font-size: 14px;">Năm học:</label>
             <select id="year-select" style="padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
                 <option value="2024 - 2025">2024 - 2025</option>
@@ -340,18 +348,70 @@
             });
 
             // Set up dropdown list of weeks
-            for (let month = 1; month <= 12; month++) {
-                for (let week = 1; week <= 5; week++) {
-                    const option = document.createElement('option');
-                    const text = `Tuần ${week} Tháng ${month}`;
-                    option.value = text;
-                    option.textContent = text;
-                    weekSelect.appendChild(option);
+            function updateWeekOptions() {
+                const schoolYear = yearSelect.value;
+                const years = schoolYear.split(' - ').map(s => parseInt(s.trim()));
+                const startYear = years[0];
+                const endYear = years[1];
+
+                const currentVal = weekSelect.value;
+                weekSelect.innerHTML = '';
+                const today = new Date();
+                let defaultWeekValue = null;
+
+                // Typical school year: Sept (startYear) to Aug (endYear)
+                const schoolMonths = [
+                    { m: 9, y: startYear }, { m: 10, y: startYear }, { m: 11, y: startYear }, { m: 12, y: startYear },
+                    { m: 1, y: endYear }, { m: 2, y: endYear }, { m: 3, y: endYear }, { m: 4, y: endYear },
+                    { m: 5, y: endYear }, { m: 6, y: endYear }, { m: 7, y: endYear }, { m: 8, y: endYear }
+                ];
+
+                schoolMonths.forEach(item => {
+                    const month = item.m;
+                    const year = item.y;
+                    let d = new Date(year, month - 1, 1);
+                    // Find first Monday
+                    while (d.getDay() !== 1) {
+                        d.setDate(d.getDate() + 1);
+                    }
+                    // Get all Mondays in this month
+                    let weekNum = 1;
+                    while (d.getMonth() === month - 1) {
+                        const monday = new Date(d);
+                        const friday = new Date(d);
+                        friday.setDate(monday.getDate() + 4);
+
+                        const monDay = monday.getDate();
+                        const monMonth = monday.getMonth() + 1;
+                        const friDay = friday.getDate();
+                        const friMonth = friday.getMonth() + 1;
+
+                        const label = `Tuần ${weekNum} Tháng ${month} (${monDay}/${monMonth} đến ${friDay}/${friMonth})`;
+                        const option = document.createElement('option');
+                        option.value = label;
+                        option.textContent = label;
+                        weekSelect.appendChild(option);
+
+                        // Check if today belongs to this week (Mon-Sun)
+                        const nextMon = new Date(monday);
+                        nextMon.setDate(monday.getDate() + 7);
+                        if (today >= monday && today < nextMon) {
+                            defaultWeekValue = label;
+                        }
+
+                        d.setDate(d.getDate() + 7);
+                        weekNum++;
+                    }
+                });
+
+                if (defaultWeekValue) {
+                    weekSelect.value = defaultWeekValue;
+                } else if (currentVal && Array.from(weekSelect.options).some(o => o.value === currentVal)) {
+                    weekSelect.value = currentVal;
                 }
             }
 
-            // Set default week to 'Tuần 4 Tháng 2'
-            weekSelect.value = 'Tuần 4 Tháng 2';
+            updateWeekOptions();
 
             uploadBtn.addEventListener('click', () => {
                 fileUpload.click();
@@ -404,6 +464,7 @@
             });
 
             yearSelect.addEventListener('change', () => {
+                updateWeekOptions();
                 loadSchedule(weekSelect.value, yearSelect.value);
             });
 
@@ -547,7 +608,7 @@
             }
 
             function renderWeekView() {
-                tableWrapper.style.height = 'auto';
+                tableWrapper.style.height = 'auto'; // Flex-grow handled by CSS
                 document.getElementById('schedule-table').style.height = 'auto';
                 tableBody.innerHTML = '';
 
@@ -584,12 +645,18 @@
                             pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
                             let chapterCode = "";
                             if (pureText) {
-                                chapterCode = pureText.split(/[\n:]/)[0].trim().split(' ')[0];
+                                chapterCode = pureText.split(/[\n:]/)[0].trim().replace(/\s+/g, '');
                             }
 
                             if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
                                 cell.classList.add('clickable-cell');
                                 cell.setAttribute('data-chapter-code', chapterCode); // Store for tooltip
+                                let dtName = "";
+                                if (currentGridObj.grid[index] && currentGridObj.grid[index][1]) {
+                                    let dtCell = currentGridObj.grid[index][1].cell;
+                                    if (dtCell && dtCell.value) dtName = String(dtCell.value).trim();
+                                }
+                                cell.setAttribute('data-organization-class', dtName);
                             }
 
                             // Keep column 0 sticky
@@ -620,6 +687,24 @@
                                     cell.style.zIndex = "12";
                                 } else {
                                     cell.style.zIndex = "11";
+                                }
+                            }
+
+                            // Add top border if this row is the start of a new organization class
+                            if (currentGridCol === 1 && currentGridObj.grid[index][1].isOriginal) {
+                                cell.style.borderTop = "2px solid black"; // Thicker border for the DT cell itself
+                                // we also need to add border to the TT cell (col_0)
+                                if (currentGridObj.grid[index][0].isOriginal) {
+                                    let ttCell = row.cells[0];
+                                    if (ttCell) ttCell.style.borderTop = "2px solid black";
+                                }
+                            }
+
+                            // For other cells in the row where a new DT starts
+                            if (currentGridCol > 1 && currentGridObj.grid[index][1] && currentGridObj.grid[index][1].isOriginal) {
+                                // If the cell is also original (starts on this row)
+                                if (currentGridObj.grid[index][currentGridCol].isOriginal) {
+                                    cell.style.borderTop = "2px solid black";
                                 }
                             }
                         }
@@ -701,8 +786,8 @@
                     { period: 5, start: 10 * 60 + 5, end: 10 * 60 + 50 },
                     { period: 6, start: 10 * 60 + 55, end: 11 * 60 + 40 },
                     { period: 7, start: 13 * 60 + 30, end: 14 * 60 + 15 },
-                    { period: 8, start: 14 * 60 + 20, end: 15 * 60 + 5 },
-                    { period: 9, start: 15 * 60 + 10, end: 15 * 60 + 55 }
+                    { period: 8, start: 14 * 60 + 25, end: 15 * 60 + 10 },
+                    { period: 9, start: 15 * 60 + 20, end: 16 * 60 + 5 }
                 ];
 
                 let targetY = -1;
@@ -877,8 +962,8 @@
             }
 
             function renderDayView() {
-                tableWrapper.style.height = 'calc(100vh - 120px)';
-                document.getElementById('schedule-table').style.height = '100%';
+                tableWrapper.style.height = 'auto'; // Flex-grow handled by CSS
+                document.getElementById('schedule-table').style.height = 'auto';
                 tableBody.innerHTML = '';
                 const daySelect = document.getElementById('day-select');
                 if (!daySelect.value) return;
@@ -1067,12 +1152,13 @@
                             pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
                             let chapterCode = "";
                             if (pureText) {
-                                chapterCode = pureText.split(/[\n:]/)[0].trim().split(' ')[0];
+                                chapterCode = pureText.split(/[\n:]/)[0].trim().replace(/\s+/g, '');
                             }
 
                             if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
                                 td.classList.add('clickable-cell');
                                 td.setAttribute('data-chapter-code', chapterCode); // Store for tooltip
+                                td.setAttribute('data-organization-class', dt.name);
                             }
                         } else {
                             td.innerHTML = '';
@@ -1103,6 +1189,7 @@
 
                 // Fetch the code that was saved during render
                 let chapterCode = td.getAttribute('data-chapter-code');
+                let organizationClass = td.getAttribute('data-organization-class') || '';
 
                 if (!chapterCode) {
                     // Fallback using text extraction if data attribute isn't set
@@ -1112,12 +1199,17 @@
                     let pureText = text.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
                     pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
                     if (pureText) {
-                        chapterCode = pureText.split(/[\n:]/)[0].trim().split(' ')[0];
+                        chapterCode = pureText.split(/[\n:]/)[0].trim().replace(/\s+/g, '');
                     }
                 }
 
                 if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
-                    fetch(`http://127.0.0.1:5001/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`)
+                    let url = `http://127.0.0.1:5001/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
+                    if (organizationClass) {
+                        url += `&organization_class=${encodeURIComponent(organizationClass)}`;
+                    }
+
+                    fetch(url)
                         .then(res => {
                             if (!res.ok) throw new Error("Not found");
                             return res.json();

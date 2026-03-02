@@ -1,0 +1,59 @@
+cd ubuntu-packages
+sudo dpkg -i *.deb
+
+# Tạo môi trường ảo
+python3 -m venv venv
+source venv/bin/activate
+
+# Cài đặt toàn bộ thư viện Python từ thư mục đã tải
+pip install --no-index --find-links=/đường_dẫn_tới/python-packages/ -r requirements.txt
+
+gunicorn -w 4 -b 127.0.0.1:5001 app:app
+
+cd /đường_dẫn_tới/nginx-offline/
+sudo dpkg -i *.deb
+
+sudo systemctl status nginx
+
+sudo mkdir -p /var/www/calendar
+
+sudo cp index.html /var/www/calendar/
+
+sudo nano /etc/nginx/sites-available/calendar
+
+server {
+    listen 80;
+    server_name _; 
+
+    # Trỏ thẳng tới thư mục Frontend
+    root /var/www/calendar;
+    index index.html;
+
+    # Cấu hình Frontend (Nếu F5 trang bị lỗi NotFound thì sẽ điều hướng về index.html)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cấu hình chuyển hướng API sang Backend Python (Flask)
+    location /api/ {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Cho phép tải lên file Excel (giới hạn 10MB, bạn có thể tăng tĩnh ở đây)
+        client_max_body_size 10M;
+    }
+}
+
+# Xóa cấu hình mặc định đi để tránh xung đột
+sudo rm /etc/nginx/sites-enabled/default
+
+# Liên kết cấu hình project của bạn
+sudo ln -s /etc/nginx/sites-available/calendar /etc/nginx/sites-enabled/
+
+sudo nginx -t
+
+sudo systemctl restart nginx
+sudo systemctl enable nginx
