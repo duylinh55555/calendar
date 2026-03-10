@@ -430,7 +430,7 @@ def get_subject_info():
                     JOIN EducationScheduleDetail esd ON s.ID = esd.SubjectID
                     JOIN EducationScheduleContent esc ON esd.EducationScheduleContentID = esc.ID
                     JOIN OrganizationClass oc ON esc.ID = oc.EducationScheduleContentID
-                    WHERE c.ChapterCode = %s AND LOCATE(oc.OrganizationClassName, %s) > 0
+                    WHERE c.ChapterCode = %s AND LOCATE(SUBSTRING_INDEX(oc.OrganizationClassName, '/', 1), %s) > 0
                     LIMIT 1
                 """
                 cursor.execute(sql, (chapter_code, organization_class))
