@@ -434,11 +434,6 @@ def get_subject_info():
                     WHERE c.ChapterCode = %s AND LOCATE(SUBSTRING_INDEX(oc.OrganizationClassName, '/', 1), %s) > 0
                 """
                 params = [chapter_code, organization_class]
-                if type_of_lesson:
-                    sql += " AND c.TypeOfLesson = %s"
-                    params.append(type_of_lesson)
-                sql += " LIMIT 1"
-                cursor.execute(sql, params)
             else:
                 sql = """
                     SELECT c.ChapterName, s.SubjectName 
@@ -447,11 +442,13 @@ def get_subject_info():
                     WHERE c.ChapterCode = %s
                 """
                 params = [chapter_code]
-                if type_of_lesson:
-                    sql += " AND c.TypeOfLesson = %s"
-                    params.append(type_of_lesson)
-                sql += " LIMIT 1"
-                cursor.execute(sql, params)
+                
+            if type_of_lesson:
+                sql += " AND c.TypeOfLesson = %s"
+                params.append(type_of_lesson)
+                
+            sql += " LIMIT 1"
+            cursor.execute(sql, tuple(params))
             result = cursor.fetchone()
             
             if result:
