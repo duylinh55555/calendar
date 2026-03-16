@@ -45,6 +45,7 @@
         #loading-state {
             text-align: center;
             padding: 20px;
+            
             font-size: 14px;
         }
 
@@ -430,7 +431,7 @@
                 uploadBtn.textContent = 'Đang tải...';
                 uploadBtn.disabled = true;
 
-                fetch('/api/upload', {
+                fetch('http://localhost:5001/api/upload', {
                     method: 'POST',
                     body: formData
                 })
@@ -470,7 +471,7 @@
                 errorState.style.display = 'none';
                 tableBody.innerHTML = ''; // clear previous payload
 
-                let url = '/api/schedule';
+                let url = 'http://localhost:5001/api/schedule';
                 const params = [];
                 if (week) params.push(`week=${encodeURIComponent(week)}`);
                 if (year) params.push(`year=${encodeURIComponent(year)}`);
@@ -651,6 +652,12 @@
                                 chapterCode = pureText.split(/[\n:]/)[0].trim().replace(/\s+/g, '');
                             }
 
+                            // Keep column 0 sticky
+                            let currentGridCol = 0;
+                            while (currentGridObj.grid[index] && currentGridObj.grid[index][currentGridCol] && currentGridObj.grid[index][currentGridCol].cell !== cellData) {
+                                currentGridCol++;
+                            }
+
                             if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
                                 cell.classList.add('clickable-cell');
                                 cell.setAttribute('data-chapter-code', chapterCode); // Store for tooltip
@@ -673,11 +680,6 @@
                                 if (typeOfLesson) cell.setAttribute('data-type-of-lesson', typeOfLesson);
                             }
 
-                            // Keep column 0 sticky
-                            let currentGridCol = 0;
-                            while (currentGridObj.grid[index] && currentGridObj.grid[index][currentGridCol] && currentGridObj.grid[index][currentGridCol].cell !== cellData) {
-                                currentGridCol++;
-                            }
                             if (currentGridCol === 0) {
                                 cell.classList.remove('clickable-cell');
                                 cell.classList.add("sticky-left");
@@ -1233,7 +1235,7 @@
                 }
 
                 if (chapterCode && chapterCode.length > 1 && isNaN(chapterCode)) {
-                    let url = `/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
+                    let url = `http://localhost:5001/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
                     if (organizationClass) {
                         url += `&organization_class=${encodeURIComponent(organizationClass)}`;
                     }
