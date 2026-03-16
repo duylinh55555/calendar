@@ -415,6 +415,7 @@ def _parse_xls(file_path):
 @app.route('/api/subject_info', methods=['GET'])
 def get_subject_info():
     chapter_code = request.args.get('chapter_code')
+    organization_class = request.args.get('organization_class')
     type_of_lesson = request.args.get('type_of_lesson')
     if not chapter_code:
         return jsonify({"error": "Thiếu mã bài học (chapter_code) đính kèm."}), 400
