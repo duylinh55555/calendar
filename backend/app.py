@@ -415,7 +415,7 @@ def _parse_xls(file_path):
 @app.route('/api/subject_info', methods=['GET'])
 def get_subject_info():
     chapter_code = request.args.get('chapter_code')
-    organization_class = request.args.get('organization_class')
+    type_of_lesson = request.args.get('type_of_lesson')
     if not chapter_code:
         return jsonify({"error": "Thiếu mã bài học (chapter_code) đính kèm."}), 400
         
@@ -431,18 +431,26 @@ def get_subject_info():
                     JOIN EducationScheduleContent esc ON esd.EducationScheduleContentID = esc.ID
                     JOIN OrganizationClass oc ON esc.ID = oc.EducationScheduleContentID
                     WHERE c.ChapterCode = %s AND LOCATE(SUBSTRING_INDEX(oc.OrganizationClassName, '/', 1), %s) > 0
-                    LIMIT 1
                 """
-                cursor.execute(sql, (chapter_code, organization_class))
+                params = [chapter_code, organization_class]
+                if type_of_lesson:
+                    sql += " AND c.TypeOfLesson = %s"
+                    params.append(type_of_lesson)
+                sql += " LIMIT 1"
+                cursor.execute(sql, params)
             else:
                 sql = """
                     SELECT c.ChapterName, s.SubjectName 
                     FROM chapter c 
                     JOIN subject s ON c.SubjectID = s.ID 
                     WHERE c.ChapterCode = %s
-                    LIMIT 1
                 """
-                cursor.execute(sql, (chapter_code,))
+                params = [chapter_code]
+                if type_of_lesson:
+                    sql += " AND c.TypeOfLesson = %s"
+                    params.append(type_of_lesson)
+                sql += " LIMIT 1"
+                cursor.execute(sql, params)
             result = cursor.fetchone()
             
             if result:

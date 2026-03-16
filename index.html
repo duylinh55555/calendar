@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -637,7 +637,14 @@
                             }
 
                             // Extract chapter code by ignoring prefixes
-                            let pureText = strValue.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
+                            const prefixRegex = /^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i;
+                            let typeOfLesson = "";
+                            let prefixMatch = strValue.match(prefixRegex);
+                            if (prefixMatch) {
+                                typeOfLesson = prefixMatch[1].toUpperCase();
+                            }
+
+                            let pureText = strValue.replace(prefixRegex, '').trim();
                             pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
                             let chapterCode = "";
                             if (pureText) {
@@ -653,6 +660,17 @@
                                     if (dtCell && dtCell.value) dtName = String(dtCell.value).trim();
                                 }
                                 cell.setAttribute('data-organization-class', dtName);
+
+                                // If no prefix in cell, check the HT column
+                                if (!typeOfLesson && currentGridCol >= 2) {
+                                    let dayIndex = Math.floor((currentGridCol - 2) / 4);
+                                    let htCol = 2 + dayIndex * 4 + 1;
+                                    if (currentGridObj.grid[index] && currentGridObj.grid[index][htCol]) {
+                                        let htVal = String(currentGridObj.grid[index][htCol].cell.value || "").trim().toUpperCase();
+                                        if (htVal) typeOfLesson = htVal;
+                                    }
+                                }
+                                if (typeOfLesson) cell.setAttribute('data-type-of-lesson', typeOfLesson);
                             }
 
                             // Keep column 0 sticky
@@ -1144,7 +1162,14 @@
                             let textWithNewlines = cellInfo.html.replace(/<br\s*[\/]?>/gi, '\n');
                             let rawText = textWithNewlines.replace(/<[^>]*>?/gm, ' ').trim();
 
-                            let pureText = rawText.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
+                            const prefixRegex = /^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i;
+                            let typeOfLesson = "";
+                            let prefixMatch = rawText.match(prefixRegex);
+                            if (prefixMatch) {
+                                typeOfLesson = prefixMatch[1].toUpperCase();
+                            }
+
+                            let pureText = rawText.replace(prefixRegex, '').trim();
                             pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
                             let chapterCode = "";
                             if (pureText) {
@@ -1155,6 +1180,7 @@
                                 td.classList.add('clickable-cell');
                                 td.setAttribute('data-chapter-code', chapterCode); // Store for tooltip
                                 td.setAttribute('data-organization-class', dt.name);
+                                if (typeOfLesson) td.setAttribute('data-type-of-lesson', typeOfLesson);
                             }
                         } else {
                             td.innerHTML = '';
@@ -1186,13 +1212,20 @@
                 // Fetch the code that was saved during render
                 let chapterCode = td.getAttribute('data-chapter-code');
                 let organizationClass = td.getAttribute('data-organization-class') || '';
+                let typeOfLesson = td.getAttribute('data-type-of-lesson') || '';
 
                 if (!chapterCode) {
                     // Fallback using text extraction if data attribute isn't set
                     const text = td.innerText.trim();
                     if (!text) return;
 
-                    let pureText = text.replace(/^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i, '').trim();
+                    const prefixRegex = /^(LL|TB|TH|G|T\.?\s*HỌC|TỰ\s*HỌC|K|TL)(?=[\s\n:\-\,\.\/\\\(\)\[\]đc]|$)/i;
+                    let prefixMatch = text.match(prefixRegex);
+                    if (prefixMatch) {
+                        typeOfLesson = prefixMatch[1].toUpperCase();
+                    }
+
+                    let pureText = text.replace(prefixRegex, '').trim();
                     pureText = pureText.replace(/^[\s\n:\-\,\.\/\\\(\)\[\]đc]+/, '').trim();
                     if (pureText) {
                         chapterCode = pureText.split(/[\n:]/)[0].trim().replace(/\s+/g, '');
@@ -1203,6 +1236,9 @@
                     let url = `/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
                     if (organizationClass) {
                         url += `&organization_class=${encodeURIComponent(organizationClass)}`;
+                    }
+                    if (typeOfLesson) {
+                        url += `&type_of_lesson=${encodeURIComponent(typeOfLesson)}`;
                     }
 
                     fetch(url)
