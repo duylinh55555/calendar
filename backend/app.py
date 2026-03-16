@@ -417,6 +417,8 @@ def get_subject_info():
     chapter_code = request.args.get('chapter_code')
     organization_class = request.args.get('organization_class')
     type_of_lesson = request.args.get('type_of_lesson')
+    if type_of_lesson == 'TH':
+        type_of_lesson = 'TB'
     if not chapter_code:
         return jsonify({"error": "Thiếu mã bài học (chapter_code) đính kèm."}), 400
         
