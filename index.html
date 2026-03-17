@@ -430,7 +430,7 @@
                 uploadBtn.textContent = 'Đang tải...';
                 uploadBtn.disabled = true;
 
-                fetch('/api/upload', {
+                fetch('http://localhost:5001/api/upload', {
                     method: 'POST',
                     body: formData
                 })
@@ -470,7 +470,7 @@
                 errorState.style.display = 'none';
                 tableBody.innerHTML = ''; // clear previous payload
 
-                let url = '/api/schedule';
+                let url = 'http://localhost:5001/api/schedule';
                 const params = [];
                 if (week) params.push(`week=${encodeURIComponent(week)}`);
                 if (year) params.push(`year=${encodeURIComponent(year)}`);
@@ -958,8 +958,8 @@
             }
 
             function renderDayView() {
-                tableWrapper.style.height = 'auto'; // Flex-grow handled by CSS
-                document.getElementById('schedule-table').style.height = 'auto';
+                tableWrapper.style.height = ''; // Flex-grow handled by CSS
+                document.getElementById('schedule-table').style.height = '100%';
                 tableBody.innerHTML = '';
                 const daySelect = document.getElementById('day-select');
                 if (!daySelect.value) return;
@@ -1204,7 +1204,7 @@
                     if (td.previousElementSibling) {
                         typeOfLesson = td.previousElementSibling.innerText.trim().split('\n')[0].trim();
                     }
-                    let url = `/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
+                    let url = `http://localhost:5001/api/subject_info?chapter_code=${encodeURIComponent(chapterCode)}`;
                     if (organizationClass) {
                         url += `&organization_class=${encodeURIComponent(organizationClass)}`;
                     }
